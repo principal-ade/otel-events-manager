@@ -1,0 +1,301 @@
+{
+  "pv": {
+    "name": "Registry Sync",
+    "version": "1.0.0",
+    "markdown": ".principal-views/registry-sync/README.md",
+    "edgeTypes": {
+      "flow": {
+        "color": "#666666",
+        "label": "then"
+      },
+      "error": {
+        "color": "#f44336",
+        "label": "on error"
+      },
+      "branch": {
+        "color": "#2196F3",
+        "label": "or"
+      }
+    }
+  },
+  "nodes": [
+    {
+      "id": "sync-started",
+      "x": 100,
+      "y": 50,
+      "width": 200,
+      "height": 100,
+      "color": "#4CAF50",
+      "type": "otel-event",
+      "label": "Sync Started",
+      "event": {
+        "name": "registry.sync.started",
+        "attributes": {
+          "workspace.id": {
+            "type": "string",
+            "description": "The workspace identifier",
+            "required": true
+          },
+          "action": {
+            "type": "string",
+            "description": "Sync action (update or remove)",
+            "required": true
+          },
+          "workspace.path": {
+            "type": "string",
+            "description": "Root path of the workspace",
+            "required": true
+          }
+        }
+      },
+      "otel": {
+        "status": "draft",
+        "references": [
+          "src/bun/index.ts:1661"
+        ]
+      }
+    },
+    {
+      "id": "workspace-registered",
+      "x": 100,
+      "y": 200,
+      "width": 200,
+      "height": 100,
+      "color": "#2196F3",
+      "type": "otel-event",
+      "label": "Workspace Registered",
+      "event": {
+        "name": "registry.workspace.registered",
+        "attributes": {
+          "workspace.id": {
+            "type": "string",
+            "description": "The workspace identifier",
+            "required": true
+          },
+          "scopes.count": {
+            "type": "integer",
+            "description": "Number of scopes discovered",
+            "required": true
+          },
+          "scopes.names": {
+            "type": "string",
+            "description": "Comma-separated list of scope names",
+            "required": true
+          },
+          "files.count": {
+            "type": "integer",
+            "description": "Number of files in FileTree",
+            "required": true
+          }
+        }
+      },
+      "otel": {
+        "status": "draft",
+        "references": [
+          "src/bun/index.ts:1695"
+        ]
+      }
+    },
+    {
+      "id": "dashboards-loaded",
+      "x": 100,
+      "y": 350,
+      "width": 200,
+      "height": 100,
+      "color": "#FF9800",
+      "type": "otel-event",
+      "label": "Dashboards Loaded",
+      "event": {
+        "name": "registry.dashboards.loaded",
+        "attributes": {
+          "workspace.id": {
+            "type": "string",
+            "description": "The workspace identifier",
+            "required": true
+          },
+          "dashboards.count": {
+            "type": "integer",
+            "description": "Number of dashboards discovered",
+            "required": true
+          },
+          "metrics.count": {
+            "type": "integer",
+            "description": "Total number of metrics across dashboards",
+            "required": true
+          }
+        }
+      },
+      "otel": {
+        "status": "draft",
+        "references": [
+          "src/bun/index.ts:1164"
+        ]
+      }
+    },
+    {
+      "id": "sync-completed",
+      "x": 100,
+      "y": 500,
+      "width": 200,
+      "height": 100,
+      "color": "#4CAF50",
+      "type": "otel-event",
+      "label": "Sync Completed",
+      "event": {
+        "name": "registry.sync.completed",
+        "attributes": {
+          "workspace.id": {
+            "type": "string",
+            "description": "The workspace identifier",
+            "required": true
+          },
+          "action": {
+            "type": "string",
+            "description": "Sync action that completed",
+            "required": true
+          },
+          "scopes.registered": {
+            "type": "integer",
+            "description": "Number of scopes registered",
+            "required": true
+          },
+          "duration.ms": {
+            "type": "number",
+            "description": "Sync duration in milliseconds",
+            "required": true
+          }
+        }
+      },
+      "otel": {
+        "status": "draft",
+        "references": [
+          "src/bun/index.ts:1744"
+        ]
+      }
+    },
+    {
+      "id": "workspace-removed",
+      "x": 400,
+      "y": 200,
+      "width": 200,
+      "height": 100,
+      "color": "#9E9E9E",
+      "type": "otel-event",
+      "label": "Workspace Removed",
+      "event": {
+        "name": "registry.workspace.removed",
+        "attributes": {
+          "workspace.id": {
+            "type": "string",
+            "description": "The workspace identifier",
+            "required": true
+          }
+        }
+      },
+      "otel": {
+        "status": "draft",
+        "references": [
+          "src/bun/index.ts:1750"
+        ]
+      }
+    },
+    {
+      "id": "sync-error",
+      "x": 400,
+      "y": 350,
+      "width": 200,
+      "height": 100,
+      "color": "#f44336",
+      "type": "otel-event",
+      "label": "Sync Error",
+      "event": {
+        "name": "registry.sync.error",
+        "attributes": {
+          "workspace.id": {
+            "type": "string",
+            "description": "The workspace identifier",
+            "required": true
+          },
+          "error.type": {
+            "type": "string",
+            "description": "Type of error (validation, registration, discovery)",
+            "required": true
+          },
+          "error.message": {
+            "type": "string",
+            "description": "Error message",
+            "required": true
+          }
+        }
+      },
+      "otel": {
+        "status": "draft",
+        "references": [
+          "src/bun/index.ts:1706"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "started-to-registered",
+      "fromNode": "sync-started",
+      "fromSide": "bottom",
+      "toNode": "workspace-registered",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "flow"
+      }
+    },
+    {
+      "id": "started-to-removed",
+      "fromNode": "sync-started",
+      "fromSide": "right",
+      "toNode": "workspace-removed",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "branch"
+      }
+    },
+    {
+      "id": "registered-to-dashboards",
+      "fromNode": "workspace-registered",
+      "fromSide": "bottom",
+      "toNode": "dashboards-loaded",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "flow"
+      }
+    },
+    {
+      "id": "registered-to-error",
+      "fromNode": "workspace-registered",
+      "fromSide": "right",
+      "toNode": "sync-error",
+      "toSide": "left",
+      "pv": {
+        "edgeType": "error"
+      }
+    },
+    {
+      "id": "dashboards-to-completed",
+      "fromNode": "dashboards-loaded",
+      "fromSide": "bottom",
+      "toNode": "sync-completed",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "flow"
+      }
+    },
+    {
+      "id": "removed-to-completed",
+      "fromNode": "workspace-removed",
+      "fromSide": "bottom",
+      "toNode": "sync-completed",
+      "toSide": "right",
+      "pv": {
+        "edgeType": "flow"
+      }
+    }
+  ]
+}
