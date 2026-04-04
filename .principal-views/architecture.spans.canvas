@@ -1,53 +1,60 @@
 {
   "pv": {
-    "name": "Skill Spans Architecture",
+    "name": "OTEL Events Manager Spans",
     "version": "1.0.0",
     "markdown": ".principal-views/architecture.md",
     "edgeTypes": {
-      "flow": {
+      "child": {
         "color": "#666666",
-        "label": "flows to"
+        "label": "child of"
       }
     }
   },
   "nodes": [
     {
-      "id": "onboard-otel-canvas-span",
+      "id": "http-server-span",
       "x": 100,
       "y": 100,
-      "width": 250,
+      "width": 280,
       "height": 100,
       "color": "#4CAF50",
       "type": "otel-span-convention",
-      "label": "Onboard OTEL Canvas",
+      "label": "HTTP POST /v1/traces",
       "otel": {
-        "spanPattern": "skill.onboard-otel-canvas",
+        "spanPattern": "http.server POST /v1/traces",
         "status": "draft"
       },
       "pv": {
-        "description": "Span for the onboard-otel-canvas skill execution"
+        "description": "HTTP server span for OTLP trace ingestion endpoint"
       }
     },
     {
-      "id": "placeholder",
+      "id": "registry-sync-span",
       "x": 100,
-      "y": 300,
-      "width": 250,
+      "y": 250,
+      "width": 280,
       "height": 100,
-      "color": "#9E9E9E",
-      "type": "text",
-      "text": "Additional spans"
+      "color": "#2196F3",
+      "type": "otel-span-convention",
+      "label": "HTTP POST /api/registry/sync",
+      "otel": {
+        "spanPattern": "http.server POST /api/registry/sync",
+        "status": "draft"
+      },
+      "pv": {
+        "description": "HTTP server span for registry workspace sync endpoint"
+      }
     }
   ],
   "edges": [
     {
-      "id": "span-flow",
-      "fromNode": "onboard-otel-canvas-span",
+      "id": "spans-relationship",
+      "fromNode": "http-server-span",
       "fromSide": "bottom",
-      "toNode": "placeholder",
+      "toNode": "registry-sync-span",
       "toSide": "top",
       "pv": {
-        "edgeType": "flow"
+        "edgeType": "child"
       }
     }
   ]

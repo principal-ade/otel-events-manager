@@ -1,0 +1,53 @@
+{
+  "name": "Trace Ingestion",
+  "description": "OTLP trace ingestion, storage, orchestration, and metrics aggregation",
+  "version": "1.0.0",
+  "canvas": ".principal-views/trace-ingestion/trace-ingestion.otel.canvas",
+  "spanPattern": "http.server POST /v1/traces",
+  "scenarios": [
+    {
+      "id": "success-with-matches",
+      "description": "Trace ingested and matched to workflow scenarios",
+      "priority": 1,
+      "template": {
+        "summary": "[SUCCESS] Trace {{trace.id}} ingested with {{scenario.matches}} scenario matches in {{duration.ms}}ms",
+        "events": {
+          "trace.received": "Received trace {{trace.id}} with {{spans.count}} spans from {{resource.spans.count}} resources",
+          "trace.spans.stored": "Stored {{spans.stored}} spans for {{trace.id}} (service: {{service.name}})",
+          "trace.orchestrator.started": "Starting orchestrator for {{trace.id}} with {{registry.scopes.count}} registered scopes",
+          "trace.orchestrator.completed": "Trace {{trace.id}} matched {{scenario.matches}} scenarios, {{storyboard.matches}} storyboards, {{unmatched.spans}} unmatched (errors: {{has.errors}})",
+          "trace.metrics.ingested": "Trace {{trace.id}}: ingested {{events.ingested}} events, updated {{metrics.updated}} metrics across {{dashboards.affected}} dashboards",
+          "trace.ingestion.complete": "Trace {{trace.id}} complete: {{total.spans}} spans in {{duration.ms}}ms (matched: {{matched}})"
+        }
+      }
+    },
+    {
+      "id": "success-no-registry",
+      "description": "Trace ingested but orchestrator skipped (no registry)",
+      "priority": 2,
+      "template": {
+        "summary": "[SUCCESS] Trace {{trace.id}} stored without matching ({{reason}})",
+        "events": {
+          "trace.received": "Received trace {{trace.id}} with {{spans.count}} spans from {{resource.spans.count}} resources",
+          "trace.spans.stored": "Stored {{spans.stored}} spans for {{trace.id}} (service: {{service.name}})",
+          "trace.orchestrator.skipped": "Orchestrator skipped for {{trace.id}}: {{reason}}",
+          "trace.ingestion.complete": "Trace {{trace.id}} complete: {{total.spans}} spans in {{duration.ms}}ms (matched: {{matched}})"
+        }
+      }
+    },
+    {
+      "id": "orchestrator-error",
+      "description": "Trace stored but orchestrator failed",
+      "priority": 3,
+      "template": {
+        "summary": "[ERROR] Orchestrator failed for trace {{trace.id}}: {{error.message}}",
+        "events": {
+          "trace.received": "Received trace {{trace.id}} with {{spans.count}} spans from {{resource.spans.count}} resources",
+          "trace.spans.stored": "Stored {{spans.stored}} spans for {{trace.id}} (service: {{service.name}})",
+          "trace.orchestrator.started": "Starting orchestrator for {{trace.id}} with {{registry.scopes.count}} registered scopes",
+          "trace.orchestrator.error": "[{{error.type}}] Orchestrator failed for {{trace.id}}: {{error.message}}"
+        }
+      }
+    }
+  ]
+}

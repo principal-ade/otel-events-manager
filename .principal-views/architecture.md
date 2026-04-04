@@ -1,9 +1,20 @@
-# Skill Spans Architecture
+# OTEL Events Manager Architecture
 
-This document describes the span conventions used for skill execution telemetry.
+The OTEL Events Manager is a trace collector, matcher, and dashboard viewer built with Electrobun.
 
-## Spans
+## Span Conventions
 
-### skill.onboard-otel-canvas
+### HTTP Server Spans
 
-The main span for the onboard-otel-canvas skill execution. This span covers the entire lifecycle of guiding a user through creating their first OTEL canvas and workflow scenarios.
+All HTTP endpoints create server spans following the OpenTelemetry HTTP semantic conventions:
+- `http.server POST /v1/traces` - OTLP trace ingestion
+- `http.server POST /api/registry/sync` - Workspace registry sync
+- `http.server GET /api/*` - Query endpoints
+
+## Components
+
+- **HTTP Server** - Bun-based HTTP server on port 4321
+- **SQLite Database** - Persistent storage for spans, traces, and metrics
+- **TraceOrchestrator** - Matches incoming traces to registered workflow scenarios
+- **MetricsIngestionService** - Aggregates trace data into dashboard metrics
+- **Electrobun UI** - Desktop application for viewing traces and dashboards
