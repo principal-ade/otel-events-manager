@@ -1,0 +1,5 @@
+name: otel-events-manager
+version: 1.0.0
+description: OTEL Events Manager - Skill telemetry instrumentation
+nodeComponents: {}
+edgeComponents: {}

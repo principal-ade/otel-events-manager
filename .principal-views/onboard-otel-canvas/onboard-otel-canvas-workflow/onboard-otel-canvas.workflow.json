@@ -1,0 +1,66 @@
+{
+  "name": "Onboard OTEL Canvas",
+  "description": "Guided onboarding for documenting features with OTEL canvases and workflow scenarios",
+  "version": "1.0.0",
+  "canvas": ".principal-views/onboard-otel-canvas/onboard-otel-canvas.otel.canvas",
+  "spanPattern": "skill.onboard-otel-canvas",
+  "scenarios": [
+    {
+      "id": "success",
+      "description": "Full onboarding completed with canvas and workflow files created",
+      "priority": 1,
+      "template": {
+        "summary": "[SUCCESS] Onboarded {{storyboard.name}} with {{canvas.files}} canvas and {{workflow.files}} workflow(s) in {{duration.ms}}ms",
+        "events": {
+          "onboard.started": "Started {{skill.name}} session {{session.id}} for project at {{project.root}}",
+          "onboard.discovery.complete": "Discovered {{candidates.count}} potential features ({{candidates.types}}) in {{exploration.duration.ms}}ms",
+          "onboard.feature.selected": "Selected {{feature.name}} ({{feature.type}}) from files {{feature.files}} with {{workflow.count}} workflow variation(s)",
+          "onboard.canvas.created": "Created canvas at {{canvas.path}} with {{events.count}} events across {{nodes.count}} nodes",
+          "onboard.workflow.created": "Created workflow at {{workflow.path}} with {{scenarios.count}} scenarios (span: {{workflow.spanPattern}})",
+          "onboard.complete": "Onboarding complete for {{storyboard.name}} in {{duration.ms}}ms! Created {{canvas.files}} canvas and {{workflow.files}} workflow(s). Next: {{next.skill}}"
+        }
+      }
+    },
+    {
+      "id": "discovery-error",
+      "description": "Onboarding failed during codebase exploration phase",
+      "priority": 2,
+      "template": {
+        "summary": "[ERROR] Discovery failed: {{error.message}}",
+        "events": {
+          "onboard.started": "Started {{skill.name}} session {{session.id}} for project at {{project.root}}",
+          "onboard.discovery.error": "[{{error.type}}] Failed to explore codebase: {{error.message}}"
+        }
+      }
+    },
+    {
+      "id": "canvas-error",
+      "description": "Onboarding failed while creating the OTEL canvas file",
+      "priority": 3,
+      "template": {
+        "summary": "[ERROR] Canvas creation failed: {{error.message}}",
+        "events": {
+          "onboard.started": "Started {{skill.name}} session {{session.id}}",
+          "onboard.discovery.complete": "Discovered {{candidates.count}} features ({{candidates.types}})",
+          "onboard.feature.selected": "Selected {{feature.name}} ({{feature.type}}) from {{feature.files}}",
+          "onboard.canvas.error": "[{{error.type}}] Failed to create canvas {{error.file}}: {{error.message}}"
+        }
+      }
+    },
+    {
+      "id": "workflow-error",
+      "description": "Onboarding failed while creating the workflow scenarios file",
+      "priority": 4,
+      "template": {
+        "summary": "[ERROR] Workflow creation failed: {{error.message}}",
+        "events": {
+          "onboard.started": "Started {{skill.name}} session {{session.id}}",
+          "onboard.discovery.complete": "Discovered {{candidates.count}} features ({{candidates.types}})",
+          "onboard.feature.selected": "Selected {{feature.name}} ({{feature.type}}) from {{feature.files}}",
+          "onboard.canvas.created": "Created canvas at {{canvas.path}}",
+          "onboard.workflow.error": "[{{error.type}}] Failed to create workflow {{error.file}}: {{error.message}}"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "pv": {
+    "name": "Skill Spans Architecture",
+    "version": "1.0.0",
+    "markdown": ".principal-views/architecture.md",
+    "edgeTypes": {
+      "flow": {
+        "color": "#666666",
+        "label": "flows to"
+      }
+    }
+  },
+  "nodes": [
+    {
+      "id": "onboard-otel-canvas-span",
+      "x": 100,
+      "y": 100,
+      "width": 250,
+      "height": 100,
+      "color": "#4CAF50",
+      "type": "otel-span-convention",
+      "label": "Onboard OTEL Canvas",
+      "otel": {
+        "spanPattern": "skill.onboard-otel-canvas",
+        "status": "draft"
+      },
+      "pv": {
+        "description": "Span for the onboard-otel-canvas skill execution"
+      }
+    },
+    {
+      "id": "placeholder",
+      "x": 100,
+      "y": 300,
+      "width": 250,
+      "height": 100,
+      "color": "#9E9E9E",
+      "type": "text",
+      "text": "Additional spans"
+    }
+  ],
+  "edges": [
+    {
+      "id": "span-flow",
+      "fromNode": "onboard-otel-canvas-span",
+      "fromSide": "bottom",
+      "toNode": "placeholder",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "flow"
+      }
+    }
+  ]
+}
