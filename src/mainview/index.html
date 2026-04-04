@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>OTEL Events Manager</title>
+	<link rel="stylesheet" href="index.css">
+</head>
+<body>
+	<div class="container">
+		<header>
+			<h1>OTEL Events Manager</h1>
+			<div class="tabs">
+				<button id="tab-spans" class="tab active">Spans</button>
+				<button id="tab-traces" class="tab">Matched Traces</button>
+				<button id="tab-dashboards" class="tab">Dashboards</button>
+			</div>
+			<div class="stats">
+				<span id="total-count" class="stat">0 spans</span>
+				<span id="error-count" class="stat">0 errors</span>
+				<span id="avg-duration" class="stat">- avg</span>
+			</div>
+			<div class="controls">
+				<button id="refresh-btn" class="btn">Refresh</button>
+				<button id="clear-btn" class="btn btn-secondary">Clear Old</button>
+			</div>
+		</header>
+
+		<div class="content-wrapper">
+			<aside id="services-sidebar" class="services-sidebar">
+				<div class="sidebar-header">Services</div>
+				<div id="services-list" class="services-list">
+					<div class="service-item selected" data-service="">
+						<span class="service-name">All Services</span>
+						<span class="service-count">-</span>
+					</div>
+				</div>
+
+				<div class="sidebar-header">Registry</div>
+				<div id="registry-status" class="registry-status">
+					<div class="registry-empty">No workspaces synced</div>
+				</div>
+			</aside>
+
+			<main>
+				<!-- Spans View -->
+				<div id="spans-view" class="view">
+					<table id="spans-table">
+						<thead>
+							<tr>
+								<th class="time-col">Time</th>
+								<th class="service-col">Service</th>
+								<th class="name-col">Name</th>
+								<th class="duration-col">Duration</th>
+								<th class="status-col">Status</th>
+							</tr>
+						</thead>
+						<tbody id="spans-body">
+							<tr class="empty-row">
+								<td colspan="5">Loading...</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<!-- Matched Traces View -->
+				<div id="traces-view" class="view hidden">
+					<div id="trace-stats" class="trace-stats"></div>
+					<table id="traces-table">
+						<thead>
+							<tr>
+								<th class="time-col">Time</th>
+								<th class="name-col">Trace Name</th>
+								<th class="spans-col">Spans</th>
+								<th class="duration-col">Duration</th>
+								<th class="matches-col">Matches</th>
+								<th class="status-col">Status</th>
+							</tr>
+						</thead>
+						<tbody id="traces-body">
+							<tr class="empty-row">
+								<td colspan="6">Loading...</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<!-- Dashboards View -->
+				<div id="dashboards-view" class="view hidden">
+					<div class="dashboards-container">
+						<div class="dashboards-sidebar">
+							<div class="sidebar-header">
+								Dashboards
+								<select id="time-range-select" class="time-range-select">
+									<option value="last_5m">Last 5 min</option>
+									<option value="last_15m">Last 15 min</option>
+									<option value="last_30m">Last 30 min</option>
+									<option value="last_1h" selected>Last 1 hour</option>
+									<option value="last_3h">Last 3 hours</option>
+									<option value="last_6h">Last 6 hours</option>
+									<option value="last_12h">Last 12 hours</option>
+									<option value="last_24h">Last 24 hours</option>
+									<option value="last_7d">Last 7 days</option>
+								</select>
+							</div>
+							<div id="dashboards-list" class="dashboards-list">
+								<div class="dashboard-empty">No dashboards loaded</div>
+							</div>
+						</div>
+						<div class="dashboard-main">
+							<h2 id="dashboard-title" class="dashboard-title">Select a Dashboard</h2>
+							<div id="dashboard-content" class="dashboard-content">
+								<div class="dashboard-placeholder">
+									Select a dashboard from the list to view metrics
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</main>
+		</div>
+
+		<aside id="details-panel" class="details-panel">
+			<div class="details-header">
+				<h2 id="details-title">Span Details</h2>
+				<button id="close-details" class="btn-close">&times;</button>
+			</div>
+			<pre id="details-content"></pre>
+		</aside>
+	</div>
+
+	<script type="module" src="index.js"></script>
+</body>
+</html>
