@@ -102,6 +102,49 @@ type DashboardSummary = {
 	metricsCount: number;
 };
 
+// Phase 5: State View types
+type PipelineEventType = 'FS_CHANGE' | 'WATCH_DETECTED' | 'CACHE_REBUILD' | 'CACHE_HIT' | 'EVENT_BROADCAST';
+
+type PipelineStateEvent = {
+	type: PipelineEventType;
+	timestamp: number;
+	repo?: string;
+	slice?: string;
+	eventType?: string;
+};
+
+type PipelineStageState = {
+	count: number;
+	lastEventTime: number | null;
+	isActive: boolean;
+};
+
+type PipelineRepoState = {
+	path: string;
+	lastEventTime: number;
+	lastEventType: string;
+};
+
+type CacheStats = {
+	reposCount: number;
+	totalFiles: number;
+	estimatedBytes: number;
+	lastUpdated: number;
+};
+
+type PipelineState = {
+	stages: {
+		disk: PipelineStageState;
+		watch: PipelineStageState;
+		cache: PipelineStageState;
+		event: PipelineStageState;
+	};
+	repos: Map<string, PipelineRepoState>;
+	recentEvents: PipelineStateEvent[];
+	totalEvents: number;
+	cacheStats: CacheStats;
+};
+
 type MetricSummary = {
 	id: string;
 	name: string;
@@ -171,6 +214,10 @@ const rpc = Electroview.defineRPC<EventsRPC>({
 			newSpansReceived: ({ count }: { count: number }) => {
 				console.log(`Received ${count} new spans`);
 				loadSpans();
+				// Also update state view if it's the active tab
+				if (currentTab === "stateview" || stateViewView?.classList.contains("hidden") === false) {
+					processSpansForStateView();
+				}
 			},
 			registryUpdated: ({ workspaceId }: { workspaceId: string }) => {
 				console.log(`Registry updated: ${workspaceId}`);
@@ -227,6 +274,14 @@ const dashboardContent = document.getElementById("dashboard-content") as HTMLDiv
 const dashboardTitle = document.getElementById("dashboard-title") as HTMLHeadingElement;
 const timeRangeSelect = document.getElementById("time-range-select") as HTMLSelectElement;
 
+// Phase 5: State View elements
+const tabStateView = document.getElementById("tab-stateview") as HTMLButtonElement;
+const stateViewView = document.getElementById("stateview-view") as HTMLDivElement;
+const stateViewServiceSelect = document.getElementById("stateview-service-select") as HTMLSelectElement;
+const stateViewResetBtn = document.getElementById("stateview-reset-btn") as HTMLButtonElement;
+const reposList = document.getElementById("repos-list") as HTMLDivElement;
+const eventsList = document.getElementById("events-list") as HTMLDivElement;
+
 // ============================================================================
 // STATE
 // ============================================================================
@@ -242,13 +297,40 @@ let registeredTraces: RegisteredTraceSummary[] = [];
 let selectedTrace: RegisteredTraceSummary | null = null;
 let matchedSpans: MatchedSpanSummary[] = [];
 let traceStats: RegisteredTraceStats = { total: 0, errorCount: 0, totalScenarioMatches: 0, totalStoryboardMatches: 0, totalUnmatchedSpans: 0, avgDuration: null };
-let currentTab: "spans" | "traces" | "dashboards" = "spans";
+let currentTab: "spans" | "traces" | "dashboards" | "stateview" = "spans";
 
 // Phase 4: State for dashboards
 let dashboards: DashboardSummary[] = [];
 let selectedDashboard: DashboardData["dashboard"] | null = null;
 let dashboardMetrics: Record<string, MetricData> = {};
 let selectedTimeRange = "last_1h";
+
+// Phase 5: State for pipeline view
+let pipelineState: PipelineState = createInitialPipelineState();
+let stateViewService: string | null = null;
+let lastProcessedSpanId: string | null = null;
+let lastRenderedEventCount: number = 0;
+let lastRenderedRepoCount: number = 0;
+
+function createInitialPipelineState(): PipelineState {
+	return {
+		stages: {
+			disk: { count: 0, lastEventTime: null, isActive: false },
+			watch: { count: 0, lastEventTime: null, isActive: false },
+			cache: { count: 0, lastEventTime: null, isActive: false },
+			event: { count: 0, lastEventTime: null, isActive: false },
+		},
+		repos: new Map(),
+		recentEvents: [],
+		totalEvents: 0,
+		cacheStats: {
+			reposCount: 0,
+			totalFiles: 0,
+			estimatedBytes: 0,
+			lastUpdated: 0,
+		},
+	};
+}
 
 // ============================================================================
 // HELPERS
@@ -508,18 +590,20 @@ async function showTraceDetails(trace: RegisteredTraceSummary): Promise<void> {
 	detailsPanel.classList.add("visible");
 }
 
-function switchTab(tab: "spans" | "traces" | "dashboards"): void {
+function switchTab(tab: "spans" | "traces" | "dashboards" | "stateview"): void {
 	currentTab = tab;
 
 	// Update tab buttons
 	tabSpans?.classList.toggle("active", tab === "spans");
 	tabTraces?.classList.toggle("active", tab === "traces");
 	tabDashboards?.classList.toggle("active", tab === "dashboards");
+	tabStateView?.classList.toggle("active", tab === "stateview");
 
 	// Update views
 	spansView?.classList.toggle("hidden", tab !== "spans");
 	tracesView?.classList.toggle("hidden", tab !== "traces");
 	dashboardsView?.classList.toggle("hidden", tab !== "dashboards");
+	stateViewView?.classList.toggle("hidden", tab !== "stateview");
 
 	// Load data for the selected tab
 	if (tab === "traces") {
@@ -527,6 +611,9 @@ function switchTab(tab: "spans" | "traces" | "dashboards"): void {
 		loadRegisteredTraceStats();
 	} else if (tab === "dashboards") {
 		loadDashboards();
+	} else if (tab === "stateview") {
+		loadStateViewServices();
+		processSpansForStateView();
 	}
 }
 
@@ -672,6 +759,337 @@ function formatNumber(n: number, decimals = 0): string {
 	if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
 	if (n >= 1000) return (n / 1000).toFixed(1) + "K";
 	return decimals > 0 ? n.toFixed(decimals) : n.toString();
+}
+
+// ============================================================================
+// PHASE 5: STATE VIEW RENDERING
+// ============================================================================
+
+function renderPipelineState(): void {
+	// Update stage counts and times
+	const stages = ['disk', 'watch', 'cache', 'event'] as const;
+
+	for (const stageId of stages) {
+		const stage = pipelineState.stages[stageId];
+		const countEl = document.getElementById(`stage-${stageId}-count`);
+		const timeEl = document.getElementById(`stage-${stageId}-time`);
+		const stageEl = document.getElementById(`stage-${stageId}`);
+
+		if (countEl) countEl.textContent = String(stage.count);
+		if (timeEl) timeEl.textContent = stage.lastEventTime ? formatRelativeTime(stage.lastEventTime) : '-';
+
+		if (stageEl) {
+			stageEl.classList.toggle('active', stage.isActive);
+			if (stage.isActive) {
+				// Trigger pulse animation
+				stageEl.classList.remove('pulse');
+				void stageEl.offsetWidth; // Force reflow
+				stageEl.classList.add('pulse');
+
+				// Clear active state after animation
+				setTimeout(() => {
+					stage.isActive = false;
+					stageEl.classList.remove('active');
+				}, 500);
+			}
+		}
+	}
+
+	// Update stats
+	const statRepos = document.getElementById('stat-repos');
+	const statCacheOps = document.getElementById('stat-cache-ops');
+	const statEvents = document.getElementById('stat-events');
+	const statTotal = document.getElementById('stat-total');
+	const statCacheMemory = document.getElementById('stat-cache-memory');
+	const statCacheFiles = document.getElementById('stat-cache-files');
+
+	if (statRepos) statRepos.textContent = String(pipelineState.repos.size);
+	if (statCacheOps) statCacheOps.textContent = String(pipelineState.stages.cache.count);
+	if (statEvents) statEvents.textContent = String(pipelineState.stages.event.count);
+	if (statTotal) statTotal.textContent = String(pipelineState.totalEvents);
+
+	// Cache memory stats
+	if (statCacheMemory) {
+		statCacheMemory.textContent = formatBytes(pipelineState.cacheStats.estimatedBytes);
+	}
+	if (statCacheFiles) {
+		statCacheFiles.textContent = String(pipelineState.cacheStats.totalFiles);
+	}
+}
+
+function formatBytes(bytes: number): string {
+	if (bytes === 0) return '0 B';
+	const k = 1024;
+	const sizes = ['B', 'KB', 'MB', 'GB'];
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
+	return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function renderPipelineRepos(force: boolean = false): void {
+	if (!reposList) return;
+
+	// Skip re-render if nothing changed
+	if (!force && pipelineState.repos.size === lastRenderedRepoCount) {
+		return;
+	}
+	lastRenderedRepoCount = pipelineState.repos.size;
+
+	if (pipelineState.repos.size === 0) {
+		reposList.innerHTML = `<div class="repos-empty">No repository activity yet</div>`;
+		return;
+	}
+
+	const repos = Array.from(pipelineState.repos.values())
+		.sort((a, b) => b.lastEventTime - a.lastEventTime)
+		.slice(0, 10);
+
+	reposList.innerHTML = repos.map(repo => {
+		const eventTypeClass = repo.lastEventType.toLowerCase().replace('_', '-');
+		return `
+			<div class="repo-item">
+				<span class="repo-path">${escapeHtml(repo.path)}</span>
+				<span class="repo-meta">
+					<span class="repo-event-type ${eventTypeClass}">${repo.lastEventType}</span>
+					<span>${formatRelativeTime(repo.lastEventTime)}</span>
+				</span>
+			</div>
+		`;
+	}).join('');
+}
+
+function renderPipelineEvents(force: boolean = false): void {
+	if (!eventsList) return;
+
+	// Skip re-render if nothing changed
+	if (!force && pipelineState.recentEvents.length === lastRenderedEventCount) {
+		return;
+	}
+	lastRenderedEventCount = pipelineState.recentEvents.length;
+
+	if (pipelineState.recentEvents.length === 0) {
+		eventsList.innerHTML = `<div class="events-empty">Waiting for events...</div>`;
+		return;
+	}
+
+	// Show most recent 20 events
+	const events = pipelineState.recentEvents.slice(0, 20);
+
+	eventsList.innerHTML = events.map(event => {
+		const eventTypeClass = event.type.toLowerCase().replace('_', '-');
+		let payload = '';
+		if (event.repo) payload += event.repo;
+		if (event.slice) payload += ` [${event.slice}]`;
+		if (event.eventType) payload += ` → ${event.eventType}`;
+
+		return `
+			<div class="event-item">
+				<span class="event-time">${formatRelativeTime(event.timestamp)}</span>
+				<span class="event-type ${eventTypeClass}">${event.type}</span>
+				<span class="event-payload">${escapeHtml(payload)}</span>
+			</div>
+		`;
+	}).join('');
+}
+
+function processSpanEvent(span: Span): PipelineStateEvent[] {
+	const events: PipelineStateEvent[] = [];
+
+	// Parse span events to extract pipeline events
+	// Format: { name: string, time: string (nanos), attributes: Record<string, unknown> }
+	let spanEvents: Array<{ name: string; time?: string; attributes?: Record<string, unknown> }> = [];
+	try {
+		spanEvents = JSON.parse(span.events || '[]');
+	} catch {
+		return events;
+	}
+
+	for (const spanEvent of spanEvents) {
+		const eventName = spanEvent.name || '';
+		const timestamp = spanEvent.time
+			? Math.floor(parseInt(spanEvent.time) / 1_000_000)
+			: span.received_at;
+
+		// Attributes are already a plain object from the ingestion
+		const attrs = (spanEvent.attributes || {}) as Record<string, string>;
+
+		// Map span event names to pipeline events
+		if (eventName.includes('filetree.request.started')) {
+			events.push({
+				type: 'FS_CHANGE',
+				timestamp,
+				repo: attrs['repository.path'] || attrs['repo.path'],
+			});
+		} else if (eventName.includes('filetree.cache.hit')) {
+			events.push({
+				type: 'CACHE_HIT',
+				timestamp,
+				repo: attrs['repository.path'] || attrs['repo.path'],
+				slice: 'fileTree',
+			});
+		} else if (eventName.includes('filetree.build.started')) {
+			events.push({
+				type: 'WATCH_DETECTED',
+				timestamp,
+				repo: attrs['repository.path'] || attrs['repo.path'],
+			});
+		} else if (eventName.includes('filetree.build.complete')) {
+			events.push({
+				type: 'CACHE_REBUILD',
+				timestamp,
+				repo: attrs['repository.path'] || attrs['repo.path'],
+				slice: 'fileTree',
+			});
+		} else if (eventName.includes('filetree.request.complete')) {
+			events.push({
+				type: 'EVENT_BROADCAST',
+				timestamp,
+				repo: attrs['repository.path'] || attrs['repo.path'],
+				eventType: attrs['source'] || 'filetree',
+			});
+
+			// Extract cache stats if present
+			const reposCount = Number(attrs['cache.repos.count']);
+			const totalFiles = Number(attrs['cache.files.total']);
+			const estimatedBytes = Number(attrs['cache.estimated.bytes']);
+
+			if (!isNaN(reposCount) && !isNaN(totalFiles)) {
+				pipelineState.cacheStats = {
+					reposCount,
+					totalFiles,
+					estimatedBytes: isNaN(estimatedBytes) ? 0 : estimatedBytes,
+					lastUpdated: timestamp,
+				};
+			}
+		}
+	}
+
+	return events;
+}
+
+function applyPipelineEvent(event: PipelineStateEvent): void {
+	const now = event.timestamp;
+
+	switch (event.type) {
+		case 'FS_CHANGE':
+			pipelineState.stages.disk.count++;
+			pipelineState.stages.disk.lastEventTime = now;
+			pipelineState.stages.disk.isActive = true;
+			break;
+
+		case 'WATCH_DETECTED':
+			pipelineState.stages.watch.count++;
+			pipelineState.stages.watch.lastEventTime = now;
+			pipelineState.stages.watch.isActive = true;
+			break;
+
+		case 'CACHE_REBUILD':
+		case 'CACHE_HIT':
+			pipelineState.stages.cache.count++;
+			pipelineState.stages.cache.lastEventTime = now;
+			pipelineState.stages.cache.isActive = true;
+			if (event.repo) {
+				pipelineState.repos.set(event.repo, {
+					path: event.repo,
+					lastEventTime: now,
+					lastEventType: event.type,
+				});
+			}
+			break;
+
+		case 'EVENT_BROADCAST':
+			pipelineState.stages.event.count++;
+			pipelineState.stages.event.lastEventTime = now;
+			pipelineState.stages.event.isActive = true;
+			break;
+	}
+
+	pipelineState.totalEvents++;
+	pipelineState.recentEvents.unshift(event);
+
+	// Keep only last 100 events
+	if (pipelineState.recentEvents.length > 100) {
+		pipelineState.recentEvents = pipelineState.recentEvents.slice(0, 100);
+	}
+}
+
+async function processSpansForStateView(): Promise<void> {
+	try {
+		// Get spans filtered by service if selected
+		const params: { limit: number; offset: number; serviceName?: string } = {
+			limit: 200,
+			offset: 0
+		};
+		if (stateViewService) {
+			params.serviceName = stateViewService;
+		}
+
+		const recentSpans = await electrobun.rpc!.request.getRecentSpans(params);
+		if (recentSpans.length === 0) return;
+
+		// Track the newest span ID (before reversing)
+		const newestSpanId = recentSpans[0].id;
+
+		// Skip if we've already processed up to this point
+		if (newestSpanId === lastProcessedSpanId) {
+			// Just update renders (for time displays)
+			renderPipelineState();
+			return;
+		}
+
+		// Find new spans we haven't processed yet
+		// Spans come newest-first, so reverse to process oldest-first
+		const reversedSpans = [...recentSpans].reverse();
+
+		let foundLastProcessed = lastProcessedSpanId === null;
+		for (const span of reversedSpans) {
+			if (!foundLastProcessed) {
+				if (span.id === lastProcessedSpanId) {
+					foundLastProcessed = true;
+				}
+				continue; // Skip already-processed spans
+			}
+
+			const events = processSpanEvent(span);
+			for (const event of events) {
+				applyPipelineEvent(event);
+			}
+		}
+
+		lastProcessedSpanId = newestSpanId;
+
+		// Render updates
+		renderPipelineState();
+		renderPipelineRepos();
+		renderPipelineEvents();
+	} catch (error) {
+		console.error('Failed to process spans for state view:', error);
+	}
+}
+
+function loadStateViewServices(): void {
+	if (!stateViewServiceSelect) return;
+
+	// Populate with known services
+	const existingServices = services.length > 0 ? services : [{ name: 'repository-monitoring-server', count: 0 }];
+
+	stateViewServiceSelect.innerHTML = `
+		<option value="">All Services</option>
+		${existingServices.map(s => `
+			<option value="${escapeHtml(s.name)}" ${stateViewService === s.name ? 'selected' : ''}>
+				${escapeHtml(s.name)}
+			</option>
+		`).join('')}
+	`;
+}
+
+function resetPipelineState(): void {
+	pipelineState = createInitialPipelineState();
+	lastProcessedSpanId = null;
+	lastRenderedEventCount = 0;
+	lastRenderedRepoCount = 0;
+	renderPipelineState();
+	renderPipelineRepos(true);
+	renderPipelineEvents(true);
 }
 
 // ============================================================================
@@ -878,6 +1296,19 @@ closeDetailsBtn.addEventListener("click", hideDetails);
 tabSpans?.addEventListener("click", () => switchTab("spans"));
 tabTraces?.addEventListener("click", () => switchTab("traces"));
 tabDashboards?.addEventListener("click", () => switchTab("dashboards"));
+tabStateView?.addEventListener("click", () => switchTab("stateview"));
+
+// Phase 5: State View controls
+stateViewServiceSelect?.addEventListener("change", () => {
+	stateViewService = stateViewServiceSelect.value || null;
+	resetPipelineState();
+	processSpansForStateView();
+});
+
+stateViewResetBtn?.addEventListener("click", () => {
+	resetPipelineState();
+	processSpansForStateView();
+});
 
 // Phase 4: Time range select
 timeRangeSelect?.addEventListener("change", () => {

@@ -14,6 +14,7 @@
 				<button id="tab-spans" class="tab active">Spans</button>
 				<button id="tab-traces" class="tab">Matched Traces</button>
 				<button id="tab-dashboards" class="tab">Dashboards</button>
+				<button id="tab-stateview" class="tab">State View</button>
 			</div>
 			<div class="stats">
 				<span id="total-count" class="stat">0 spans</span>
@@ -113,6 +114,96 @@
 								<div class="dashboard-placeholder">
 									Select a dashboard from the list to view metrics
 								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- State View (Repository Monitoring Pipeline) -->
+				<div id="stateview-view" class="view hidden">
+					<div class="stateview-container">
+						<div class="stateview-header">
+							<h2>Repository Monitoring Pipeline</h2>
+							<div class="stateview-controls">
+								<select id="stateview-service-select" class="stateview-select">
+									<option value="">All Services</option>
+								</select>
+								<button id="stateview-reset-btn" class="btn btn-secondary">Reset</button>
+							</div>
+						</div>
+
+						<!-- Pipeline Stages -->
+						<div class="pipeline-stages">
+							<div class="pipeline-stage" id="stage-disk">
+								<div class="stage-icon">💾</div>
+								<div class="stage-label">Disk</div>
+								<div class="stage-count" id="stage-disk-count">0</div>
+								<div class="stage-time" id="stage-disk-time">-</div>
+							</div>
+							<div class="pipeline-arrow">→</div>
+							<div class="pipeline-stage" id="stage-watch">
+								<div class="stage-icon">👁️</div>
+								<div class="stage-label">Watch</div>
+								<div class="stage-count" id="stage-watch-count">0</div>
+								<div class="stage-time" id="stage-watch-time">-</div>
+							</div>
+							<div class="pipeline-arrow">→</div>
+							<div class="pipeline-stage" id="stage-cache">
+								<div class="stage-icon">📦</div>
+								<div class="stage-label">Cache</div>
+								<div class="stage-count" id="stage-cache-count">0</div>
+								<div class="stage-time" id="stage-cache-time">-</div>
+							</div>
+							<div class="pipeline-arrow">→</div>
+							<div class="pipeline-stage" id="stage-event">
+								<div class="stage-icon">📡</div>
+								<div class="stage-label">Events</div>
+								<div class="stage-count" id="stage-event-count">0</div>
+								<div class="stage-time" id="stage-event-time">-</div>
+							</div>
+						</div>
+
+						<!-- Stats Row -->
+						<div class="pipeline-stats">
+							<div class="pipeline-stat">
+								<div class="stat-value" id="stat-repos">0</div>
+								<div class="stat-label">Repos</div>
+							</div>
+							<div class="pipeline-stat">
+								<div class="stat-value" id="stat-cache-ops">0</div>
+								<div class="stat-label">Cache Ops</div>
+							</div>
+							<div class="pipeline-stat">
+								<div class="stat-value" id="stat-events">0</div>
+								<div class="stat-label">Events</div>
+							</div>
+							<div class="pipeline-stat">
+								<div class="stat-value" id="stat-total">0</div>
+								<div class="stat-label">Total</div>
+							</div>
+							<div class="pipeline-stat stat-highlight">
+								<div class="stat-value" id="stat-cache-memory">0 B</div>
+								<div class="stat-label">Cache Memory</div>
+							</div>
+							<div class="pipeline-stat">
+								<div class="stat-value" id="stat-cache-files">0</div>
+								<div class="stat-label">Cached Files</div>
+							</div>
+						</div>
+
+						<!-- Active Repositories -->
+						<div class="pipeline-repos">
+							<div class="repos-header">Active Repositories</div>
+							<div id="repos-list" class="repos-list">
+								<div class="repos-empty">No repository activity yet</div>
+							</div>
+						</div>
+
+						<!-- Recent Events -->
+						<div class="pipeline-events">
+							<div class="events-header">Recent Events</div>
+							<div id="events-list" class="events-list">
+								<div class="events-empty">Waiting for events...</div>
 							</div>
 						</div>
 					</div>
